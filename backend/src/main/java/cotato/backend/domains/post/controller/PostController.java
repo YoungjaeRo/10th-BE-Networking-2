@@ -1,6 +1,8 @@
 package cotato.backend.domains.post.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,11 +32,20 @@ public class PostController {
 	}
 
 
-	@Operation(summary = "게시글 다중 새성 기능 Api")
+	@Operation(summary = "게시글 다중 생성 기능 Api")
 	@PostMapping("/excel")
 	public ResponseEntity<DataResponse<Void>> savePostsByExcel(@RequestBody SavePostsByExcelRequest request) {
 		postService.saveEstatesByExcel(request.getPath());
 
 		return ResponseEntity.ok(DataResponse.ok());
 	}
+
+
+	@Operation(summary = "게시글 조회 기능 Api")
+	@GetMapping("/{id}") //Get 메서드는 JSON 형식으로 오는게 아니므로 @PathVariable을 사용: variable이랑 "매핑 변수의 이름"이 같아야 함
+	public ResponseEntity<DataResponse<Post>> getPostById(@PathVariable Long id) {
+		Post post = postService.getPostById(id);
+		return ResponseEntity.ok(DataResponse.from(post));
+	}
+
 }

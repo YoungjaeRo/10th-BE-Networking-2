@@ -5,6 +5,7 @@ import static cotato.backend.common.exception.ErrorCode.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +55,17 @@ public class PostService {
 		// dto로 받아와 생성한 객체에서 필드값을 추출해 Post 생성
 		Post post = new Post(postRequest.getTitle(), postRequest.getContent(), postRequest.getName());
 		// 저장후, 저장된 객체 반환
+		return postRepository.save(post);
+	}
+
+	// 게시글 조회 비즈니스 로직
+	public Post getPostById(Long id) {
+
+		//반환 값이 Optional<>이기 떄문에 orElseThrow로 예외처리를 꼭해줘야 함
+		Post post = postRepository.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "해당 게시물을 찾을 수 없습니다.", "POST_NOT_FOUND"));
+
+		//조회를 했기 때문에 --> 조회수 증가
+		post.incrementViews();
 		return postRepository.save(post);
 	}
 }
