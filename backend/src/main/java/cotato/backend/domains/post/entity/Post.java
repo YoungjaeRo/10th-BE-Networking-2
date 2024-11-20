@@ -35,8 +35,8 @@ public class Post {
 	private Integer views = 0; // 조회수를 0으로 초기화
 
 	@Builder
-	public Post(String titile, String content, String name) {
-		this.title = title;
+	public Post(String title, String content, String name) {
+		this.title = this.title;
 		this.content = content;
 		this.name = name;
 	}
