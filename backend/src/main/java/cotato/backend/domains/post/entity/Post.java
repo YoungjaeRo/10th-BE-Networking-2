@@ -34,6 +34,7 @@ public class Post {
 	@Column(nullable = false)
 	private Integer views = 0; // 조회수를 0으로 초기화
 
+
 	@Builder
 	public Post(String title, String content, String name) {
 		this.title = this.title;
