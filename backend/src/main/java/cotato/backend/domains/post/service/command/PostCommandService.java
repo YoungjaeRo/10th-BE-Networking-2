@@ -1,14 +1,12 @@
-package cotato.backend.domains.post.service;
+package cotato.backend.domains.post.service.command;
 
 import static cotato.backend.common.exception.ErrorCode.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import cotato.backend.common.excel.ExcelUtils;
 import cotato.backend.common.exception.ApiException;
 import cotato.backend.domains.post.dto.PostRequest;
@@ -22,7 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 @Transactional
-public class PostService {
+public class PostCommandService {
 
 	// MVC 패턴이므로 Service계층에서 Repository를 참조
 	private final PostRepository postRepository;
@@ -68,4 +66,16 @@ public class PostService {
 		post.incrementViews();
 		return postRepository.save(post);
 	}
+
+	// 게시글 삭제 비즈니스 로직
+	public void deletePostById(Long id) {
+		// 게시글이 있는지 확인 (없다면)
+		if(!postRepository.existsById(id)) {
+			throw new IllegalArgumentException("해당 ID의 게시글이 존재하지 않습니다!");
+		}
+		// 게시글이 존재한다면 --> 삭제 진행
+		postRepository.deleteById(id);
+	}
+
+
 }
