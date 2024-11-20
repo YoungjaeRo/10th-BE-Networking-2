@@ -5,6 +5,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -71,5 +72,14 @@ public class PostController {
 		Page<PostResponseDto> posts = postQueryService.getPostByLikes(pageable);
 
 		return ResponseEntity.ok(DataResponse.from(posts));
+	}
+
+	@Operation(summary = "게시글 삭제", description = "ID를 통해 게시글을 삭제합니다.")
+	@DeleteMapping("/{id}")
+	public ResponseEntity<DataResponse<Void>> deletePost(@PathVariable Long id) {
+		// 해당 ID의 게시글 삭제
+		postService.deletePostById(id);
+		// 삭제가 완료됐으면, 성공 응답 표시
+		return ResponseEntity.ok(DataResponse.ok());
 	}
 }
