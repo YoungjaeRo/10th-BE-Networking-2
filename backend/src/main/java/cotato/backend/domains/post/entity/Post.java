@@ -17,7 +17,6 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-@Builder
 public class Post {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,6 +33,14 @@ public class Post {
 
 	@Column(nullable = false)
 	private Integer views = 0; // 조회수를 0으로 초기화
+
+	@Builder
+	public Post(String titile, String content, String name) {
+		this.title = title;
+		this.content = content;
+		this.name = name;
+	}
+
 
 	//SOLID 중 SRP(단일 책임 원칙)에 부합하게 설계 --> 조회수 증가 로직을 엔터티 내부에 구현
 	public void incrementViews() {
