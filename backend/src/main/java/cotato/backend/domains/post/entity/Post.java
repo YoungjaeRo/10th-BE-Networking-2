@@ -38,7 +38,7 @@ public class Post {
 
 	@Builder
 	public Post(String title, String content, String name) {
-		this.title = this.title;
+		this.title = title;
 		this.content = content;
 		this.name = name;
 	}
