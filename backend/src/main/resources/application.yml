@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  sql:
+    init:
+      mode: never
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        show_sql: true
+        format_sql: true
+        use_sql_comments: true
+        hbm2ddl:
+          auto: update
+        default_batch_fetch_size: 1000
+        jdbc:
+          batch_size: 100 # 한번에 처리할 배치 사이즈 설정
+          order_inserts: true  # 삽입 쿼리 순서 최적화
+          order_updates: true  # 업데이트 쿼리 순서 최적화
+          batch_versioned_data: true  # 버전이 있는 데이터에 대해서도 배치 처리 적용
+          generate_statistics: true  # Hibernate 통계 정보 생성 (디버깅 목적)
+
+springdoc:
+  swagger-ui:
+    path: /

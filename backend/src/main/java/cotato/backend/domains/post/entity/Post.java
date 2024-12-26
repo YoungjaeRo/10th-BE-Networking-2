@@ -1,5 +1,7 @@
 package cotato.backend.domains.post.entity;
 
+import org.springframework.boot.autoconfigure.web.WebProperties;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
