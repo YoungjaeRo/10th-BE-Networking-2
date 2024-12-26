@@ -12,6 +12,7 @@ import cotato.backend.common.exception.ApiException;
 import cotato.backend.domains.post.dto.PostRequest;
 import cotato.backend.domains.post.entity.Post;
 import cotato.backend.domains.post.repository.PostRepository;
+import jakarta.persistence.EntityManager;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,22 +26,37 @@ public class PostCommandService {
 	// MVC 패턴이므로 Service계층에서 Repository를 참조
 	private final PostRepository postRepository;
 
+	private final EntityManager entityManager;
+
+	private static final int BATCH_SIZE = 1000; // 배치 사이즈 설정
+
 	// 로컬 파일 경로로부터 엑셀 파일을 읽어 Post 엔터티로 변환하고 저장
 	public void saveEstatesByExcel(String filePath) {
 		try {
-			// 엑셀 데이터를 읽어 Post 엔터티로 변환하고 저장
-
-			// 1. Excel 파일에서 데이터를 읽어외 Post 엔터티로 반환
+			// 엑셀 데이터를 읽어 Post 엔터티로 변환
 			List<Post> posts = ExcelUtils.parseExcelFile(filePath).stream()
-				.map(row -> Post.builder()
-					.title(row.get("title"))
-					.content(row.get("content"))
-					.name(row.get("name"))
-					.build())
-					.collect(Collectors.toList());
+				.map(row -> {
+					String title = row.get("title");
+					String content = row.get("content");
+					String name = row.get("name");
+					return new Post(title, content, name);
+				})
+				.collect(Collectors.toList());
 
-			// 2. 데이터를 청크 단위로 저장해서 성능을 최적화 함
-			savePostInChunks(posts);
+			// Bulk insert를 위한 엔티티 배치 저장
+			for (int i = 0; i < posts.size(); i++) {
+				entityManager.persist(posts.get(i));  // 엔티티를 persistence context에 저장
+
+				// 배치 크기가 BATCH_SIZE에 도달하면 flush하고, persistence context를 clear
+				if (i > 0 && i % BATCH_SIZE == 0) {
+					entityManager.flush(); // 영속성 컨텍스트를 DB에 반영
+					entityManager.clear(); // 영속성 컨텍스트 초기화 -->  메모리 절약
+				}
+			}
+
+			// 마지막 남은 엔티티들 flush
+			entityManager.flush();
+			entityManager.clear();
 
 		} catch (Exception e) {
 			log.error("Failed to save estates by excel", e);
@@ -48,18 +64,18 @@ public class PostCommandService {
 		}
 	}
 
-	/**
-	 *
-	 * @ 청크 단위로 데이터를 저장함
-	 */
-	private void savePostInChunks(List<Post> posts) {
-		int batchSize = 100;
-		for(int i = 0; i < posts.size(); i += batchSize) {
-			List<Post> chunk = posts.subList(i, Math.min(i + batchSize, posts.size()));
-			postRepository.saveAll(chunk); // saveAll로 저장
-			postRepository.flush(); // 하이버네이트의 Batch Insert로 최적화
-		}
-	}
+	// /**
+	//  *
+	//  * @ 청크 단위로 데이터를 저장함
+	//  */
+	// private void savePostInChunks(List<Post> posts) {
+	// 	int batchSize = 100;
+	// 	for(int i = 0; i < posts.size(); i += batchSize) {
+	// 		List<Post> chunk = posts.subList(i, Math.min(i + batchSize, posts.size()));
+	// 		postRepository.saveAll(chunk); // saveAll로 저장
+	// 		postRepository.flush(); // 하이버네이트의 Batch Insert로 최적화
+	// 	}
+	// }
 
 	//게시글 생성 서비스 로직
 	public Post createPost(PostRequest postRequest) {
