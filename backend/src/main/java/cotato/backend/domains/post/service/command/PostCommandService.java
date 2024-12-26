@@ -2,9 +2,11 @@ package cotato.backend.domains.post.service.command;
 
 import static cotato.backend.common.exception.ErrorCode.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import cotato.backend.common.excel.ExcelUtils;
@@ -12,7 +14,6 @@ import cotato.backend.common.exception.ApiException;
 import cotato.backend.domains.post.dto.PostRequest;
 import cotato.backend.domains.post.entity.Post;
 import cotato.backend.domains.post.repository.PostRepository;
-import jakarta.persistence.EntityManager;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +27,8 @@ public class PostCommandService {
 	// MVC 패턴이므로 Service계층에서 Repository를 참조
 	private final PostRepository postRepository;
 
-	private final EntityManager entityManager;
+	// Bulk insert 방식, 특히 대량 데이터 삽입 최적화를 우해서는 JDBC template이 적절함
+	private final JdbcTemplate jdbcTemplate;
 
 	private static final int BATCH_SIZE = 1000; // 배치 사이즈 설정
 
@@ -35,28 +37,15 @@ public class PostCommandService {
 		try {
 			// 엑셀 데이터를 읽어 Post 엔터티로 변환
 			List<Post> posts = ExcelUtils.parseExcelFile(filePath).stream()
-				.map(row -> {
-					String title = row.get("title");
-					String content = row.get("content");
-					String name = row.get("name");
-					return new Post(title, content, name);
-				})
+				.map(row -> new Post(
+					row.get("title"),
+					row.get("content"),
+					row.get("name")
+				))
 				.collect(Collectors.toList());
 
-			// Bulk insert를 위한 엔티티 배치 저장
-			for (int i = 0; i < posts.size(); i++) {
-				entityManager.persist(posts.get(i));  // 엔티티를 persistence context에 저장
-
-				// 배치 크기가 BATCH_SIZE에 도달하면 flush하고, persistence context를 clear
-				if (i > 0 && i % BATCH_SIZE == 0) {
-					entityManager.flush(); // 영속성 컨텍스트를 DB에 반영
-					entityManager.clear(); // 영속성 컨텍스트 초기화 -->  메모리 절약
-				}
-			}
-
-			// 마지막 남은 엔티티들 flush
-			entityManager.flush();
-			entityManager.clear();
+			// 데이터베이스에 배치 저장
+			batchInsert(posts);
 
 		} catch (Exception e) {
 			log.error("Failed to save estates by excel", e);
@@ -64,18 +53,31 @@ public class PostCommandService {
 		}
 	}
 
-	// /**
-	//  *
-	//  * @ 청크 단위로 데이터를 저장함
-	//  */
-	// private void savePostInChunks(List<Post> posts) {
-	// 	int batchSize = 100;
-	// 	for(int i = 0; i < posts.size(); i += batchSize) {
-	// 		List<Post> chunk = posts.subList(i, Math.min(i + batchSize, posts.size()));
-	// 		postRepository.saveAll(chunk); // saveAll로 저장
-	// 		postRepository.flush(); // 하이버네이트의 Batch Insert로 최적화
-	// 	}
-	// }
+	public void batchInsert(List<Post> posts) {
+		String sql = "INSERT INTO post (title, content, name, views, likes) VALUES (?, ?, ?, ?, ?)";
+
+		List<Object[]> batchArgs = new ArrayList<>();
+		for (Post post : posts) {
+			batchArgs.add(new Object[]{
+				post.getTitle(),
+				post.getContent(),
+				post.getName(),
+				post.getViews(),
+				post.getLikes()
+			});
+
+			// 배치 크기에 도달하면 실행
+			if (batchArgs.size() == BATCH_SIZE) {
+				jdbcTemplate.batchUpdate(sql, batchArgs);
+				batchArgs.clear(); // 리스트 초기화
+			}
+		}
+
+		// 남은 데이터 처리
+		if (!batchArgs.isEmpty()) {
+			jdbcTemplate.batchUpdate(sql, batchArgs);
+		}
+	}
 
 	//게시글 생성 서비스 로직
 	public Post createPost(PostRequest postRequest) {
