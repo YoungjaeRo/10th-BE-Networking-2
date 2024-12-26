@@ -28,23 +28,36 @@ public class PostCommandService {
 	// 로컬 파일 경로로부터 엑셀 파일을 읽어 Post 엔터티로 변환하고 저장
 	public void saveEstatesByExcel(String filePath) {
 		try {
-			// 엑셀 파일을 읽어 데이터 프레임 형태로 변환
+			// 엑셀 데이터를 읽어 Post 엔터티로 변환하고 저장
+
+			// 1. Excel 파일에서 데이터를 읽어외 Post 엔터티로 반환
 			List<Post> posts = ExcelUtils.parseExcelFile(filePath).stream()
-				.map(row -> { // 스트림 방식
-					String title = row.get("title");
-					String content = row.get("content");
-					String name = row.get("name");
+				.map(row -> Post.builder()
+					.title(row.get("title"))
+					.content(row.get("content"))
+					.name(row.get("name"))
+					.build())
+					.collect(Collectors.toList());
 
-					return new Post(title, content, name);
-				})
-				.collect(Collectors.toList());
-
-			// stream 으로 처리해서 가져온 List<Post>의 데이터를 DB에 저장 (JPA Repository 인터페이스가 제공하는 saveAll 메서드를 이용)
-			postRepository.saveAll(posts);
+			// 2. 데이터를 청크 단위로 저장해서 성능을 최적화 함
+			savePostInChunks(posts);
 
 		} catch (Exception e) {
 			log.error("Failed to save estates by excel", e);
 			throw ApiException.from(INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	/**
+	 *
+	 * @ 청크 단위로 데이터를 저장함
+	 */
+	private void savePostInChunks(List<Post> posts) {
+		int batchSize = 100;
+		for(int i = 0; i < posts.size(); i += batchSize) {
+			List<Post> chunk = posts.subList(i, Math.min(i + batchSize, posts.size()));
+			postRepository.saveAll(chunk); // saveAll로 저장
+			postRepository.flush(); // 하이버네이트의 Batch Insert로 최적화
 		}
 	}
 
@@ -76,6 +89,4 @@ public class PostCommandService {
 		// 게시글이 존재한다면 --> 삭제 진행
 		postRepository.deleteById(id);
 	}
-
-
 }
